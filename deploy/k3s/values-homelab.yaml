@@ -1,0 +1,32 @@
+replicaCount: 1
+
+image:
+  repository: ghcr.io/bluicezhen/metapi
+  tag: "test-arm64"
+  digest: ""
+  pullPolicy: Always
+
+service:
+  type: NodePort
+  port: 4000
+  nodePort: 30400
+
+persistence:
+  hostPath: /opt/metapi/data
+
+env:
+  useExistingSecret: true
+  existingSecret: metapi-secrets
+
+  # 这些字段在 useExistingSecret=true 时不会被使用，留空即可
+  authToken: ""
+  proxyToken: ""
+  dbType: sqlite
+  dbUrl: ""
+  dbSsl: "false"
+  dataDir: /app/data
+  port: "4000"
+  tz: Asia/Shanghai
+  checkinCron: "0 8 * * *"
+  balanceRefreshCron: "0 * * * *"
+  deployHelperToken: ""
