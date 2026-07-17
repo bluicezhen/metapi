@@ -1,0 +1,75 @@
+  name: deploy-image
+
+  on:
+    push:
+      branches: [release]
+      paths-ignore:
+        - 'docs/**'
+        - '**/*.md'
+
+  jobs:
+    build-and-bump:
+      # 防环：跳过 bot 自己带 [skip ci] 的回写提交
+      if: github.actor != 'github-actions[bot]' && !contains(github.event.head_commit.message, '[skip ci]')
+      runs-on: ubuntu-latest
+      permissions:
+        contents: write   # 回写 release 分支
+        packages: write   # push GHCR
+
+      steps:
+        - name: Checkout release branch
+          uses: actions/checkout@v4
+          with:
+            ref: release
+            persist-credentials: true
+
+        - name: Install yq
+          run: |
+            sudo wget -qO /usr/local/bin/yq \
+              https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+            sudo chmod +x /usr/local/bin/yq
+
+        - name: Resolve tag
+          id: tag
+          run: echo "value=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+        - name: Set up QEMU
+          uses: docker/setup-qemu-action@v3
+
+        - name: Set up buildx
+          uses: docker/setup-buildx-action@v3
+
+        - name: Login to GHCR
+          uses: docker/login-action@v3
+          with:
+            registry: ghcr.io
+            username: ${{ github.actor }}
+            password: ${{ secrets.GITHUB_TOKEN }}
+
+        - name: Build and push (linux/arm64)
+          uses: docker/build-push-action@v6
+          with:
+            context: .
+            file: ./docker/Dockerfile
+            platforms: linux/arm64
+            push: true
+            tags: |
+              ghcr.io/bluicezhen/metapi:${{ steps.tag.outputs.value }}
+              ghcr.io/bluicezhen/metapi:latest
+
+        - name: Bump image.tag in values-homelab.yaml
+          run: |
+            yq -i ".image.tag = \"${{ steps.tag.outputs.value }}\"" \
+              deploy/k3s/values-homelab.yaml
+
+        - name: Commit and push bump
+          run: |
+            git config user.name  "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add deploy/k3s/values-homelab.yaml
+            if ! git diff --cached --quiet; then
+              git commit -m "chore(deploy): bump metapi image to ${{ steps.tag.outputs.value }} [skip ci]"
+              git push
+            else
+              echo "values already at target tag, nothing to push"
+            fi
