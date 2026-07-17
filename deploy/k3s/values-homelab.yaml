@@ -1,17 +1,13 @@
 replicaCount: 1
-
 image:
   repository: ghcr.io/bluicezhen/metapi
-  tag: "41767a6"
+  tag: "068c66f"
   digest: ""
   pullPolicy: Always
-
 service:
   type: NodePort
   port: 4000
   nodePort: 30400
-
 persistence:
   hostPath: /home/ubuntu/metapi/data
-
 existingSecret: "metapi-secrets"
