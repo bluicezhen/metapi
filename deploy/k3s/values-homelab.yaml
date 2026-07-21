@@ -1,7 +1,7 @@
 replicaCount: 1
 image:
   repository: ghcr.io/bluicezhen/metapi
-  tag: "068c66f"
+  tag: "5b0d6ee"
   digest: ""
   pullPolicy: Always
 service:
